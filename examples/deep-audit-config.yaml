@@ -1,0 +1,17 @@
+url: "https://example.com"
+profile: "deep"
+audit: true
+emails: true
+phones: true
+ipv4s: true
+cpfs: true
+cnpjs: true
+sitemap: true
+sensitive_path_checks: true
+plugins:
+  - seo
+  - privacy
+  - accessibility
+output: "deep-report.html"
+format: "html"
+tag: "deep-audit"

@@ -1,0 +1,14 @@
+url: "http://localhost:8000"
+profile: "portfolio"
+audit: true
+emails: true
+phones: true
+ipv4s: true
+sitemap: true
+plugins:
+  - seo
+  - privacy
+  - accessibility
+output: "report.html"
+format: "html"
+tag: "portfolio-demo"

@@ -1,0 +1,10 @@
+url: "https://example.com"
+profile: "safe"
+audit: true
+sitemap: true
+plugins:
+  - seo
+  - accessibility
+output: "report.sarif"
+format: "sarif"
+tag: "ci"
