@@ -9,7 +9,7 @@ import logging
 import sys
 from pathlib import Path
 
-from colorama import Fore, Style, init as colorama_init
+from colorama import  init as colorama_init
 
 from .async_core import AsyncHCrawler
 from .config import load_config_file
