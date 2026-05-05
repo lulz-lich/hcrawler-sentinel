@@ -72,3 +72,28 @@ hcrawler crawl https://example.com --audit --fail-on medium -o report.sarif -f s
 ```bash
 hcrawler doctor
 ```
+
+
+## Hacker aesthetic mode
+
+HCrawler Sentinel enables its hacker-style terminal theme by default.
+
+You will see:
+
+- animated ASCII boot banners
+- matrix-like decorative lines
+- mission profile panels
+- animated preparation phases
+- enhanced summary blocks
+
+Run normally:
+
+```bash
+hcrawler crawl https://example.com --audit --sentinel-summary -o report.html -f html
+```
+
+Disable the effects for CI, piping, or plain logs:
+
+```bash
+hcrawler crawl https://example.com --audit --no-effects -o report.json -f json
+```

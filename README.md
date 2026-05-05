@@ -99,6 +99,30 @@ Built-in plugins:
 - pre-commit config
 - GitHub Actions CI and release workflow
 
+
+
+## Terminal Aesthetic Layer
+
+HCrawler Sentinel now ships with a built-in hacker-style terminal presentation layer.
+
+It includes:
+
+- multiple rotating large ASCII-art startup banners
+- command-specific ASCII headers for `crawl`, `diff`, and `doctor`
+- random skull / terminal art injections
+- neon terminal color palette
+- lightweight boot sequence animation
+- framed mission-profile panels
+- animated phase indicators
+- enhanced summary dashboard with risk bars
+- matrix-style decorative bursts
+
+Disable the effects when you want plain output:
+
+```bash
+hcrawler crawl https://example.com --audit --no-effects -o report.json -f json
+```
+
 ## Installation
 
 ```bash

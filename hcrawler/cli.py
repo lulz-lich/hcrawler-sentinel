@@ -23,6 +23,7 @@ from .models import CrawlConfig
 from .policy import evaluate_policy
 from .profiles import profile_defaults
 from .scope import load_scope_file
+from .theme import boot_sequence, event, mini_matrix, phase, print_kv_block, random_art, rule, splash
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -72,6 +73,7 @@ def build_parser() -> argparse.ArgumentParser:
     crawl.add_argument("--fail-on", choices=["info", "low", "medium", "high", "critical"], help="Exit with code 2 if findings at this severity or higher exist")
     crawl.add_argument("--max-errors-policy", type=int, help="Exit with code 2 if crawl errors exceed this number")
     crawl.add_argument("--sentinel-summary", action="store_true", help="Print richer summary table")
+    crawl.add_argument("--no-effects", action="store_true", help="Disable hacker-style banner and terminal effects")
     crawl.add_argument("-q", "--quiet", action="store_true")
     crawl.add_argument("--debug", action="store_true")
 
@@ -93,26 +95,31 @@ def configure_logging(*, quiet: bool = False, debug: bool = False) -> None:
     logging.basicConfig(level=level, format="%(message)s")
 
 
-def print_banner() -> None:
-    print(Fore.LIGHTGREEN_EX + "HCrawler Sentinel" + Style.RESET_ALL + " - authorized web discovery toolkit")
+def print_banner(*, effects: bool = True, command: str | None = None) -> None:
+    splash(enabled=effects, command=command)
+    mini_matrix(enabled=effects, rows=5)
+    random_art(enabled=effects)
+    boot_sequence(enabled=effects)
 
 
 def print_summary(result) -> None:
-    print(Fore.LIGHTGREEN_EX + "Done." + Style.RESET_ALL)
-    print(f"Pages crawled:        {len(result.pages)}")
-    print(f"Links found:          {len(result.links)}")
-    print(f"External links:       {len(result.external_links)}")
-    print(f"Sitemap URLs:         {len(result.sitemap_urls)}")
-    print(f"Technologies:         {len(result.technologies)}")
-    print(f"Emails found:         {len(result.emails)}")
-    print(f"Phones found:         {len(result.phones)}")
-    print(f"CPFs found:           {len(result.cpfs)}")
-    print(f"CNPJs found:          {len(result.cnpjs)}")
-    print(f"IPv4s found:          {len(result.ipv4s)}")
-    print(f"Secret hints:         {len(result.secret_hints)}")
-    print(f"Sensitive path hits:  {len(result.checked_sensitive_paths)}")
-    print(f"Robots blocked seen:  {len(result.robots_disallowed_seen)}")
-    print(f"Errors:               {len(result.errors)}")
+    event("crawl completed", "info")
+    print_kv_block("operation summary", [
+        ("pages crawled", len(result.pages)),
+        ("links found", len(result.links)),
+        ("external links", len(result.external_links)),
+        ("sitemap urls", len(result.sitemap_urls)),
+        ("technologies", len(result.technologies)),
+        ("emails found", len(result.emails)),
+        ("phones found", len(result.phones)),
+        ("cpfs found", len(result.cpfs)),
+        ("cnpjs found", len(result.cnpjs)),
+        ("ipv4s found", len(result.ipv4s)),
+        ("secret hints", len(result.secret_hints)),
+        ("sensitive path hits", len(result.checked_sensitive_paths)),
+        ("robots blocked", len(result.robots_disallowed_seen)),
+        ("errors", len(result.errors)),
+    ])
 
 
 def apply_config_file(args) -> dict:
@@ -129,13 +136,27 @@ def run_crawl(args) -> int:
     config_file = apply_config_file(args)
     configure_logging(quiet=args.quiet, debug=args.debug)
 
+    effects = not args.no_effects and not args.quiet
+
     if not args.quiet:
-        print_banner()
+        print_banner(effects=effects, command="crawl")
 
     scope_targets = load_scope_file(Path(args.scope_file)) if args.scope_file else []
     url = args.url or config_file.get("url") or config_file.get("start_url") or (scope_targets[0] if scope_targets else None)
     if not url:
         raise SystemExit("Target URL required.")
+
+    if not args.quiet:
+        rule("target acquisition")
+        print_kv_block("mission profile", [
+            ("target", url),
+            ("profile", config_file.get("profile", args.profile)),
+            ("format", args.format or config_file.get("format", "txt")),
+            ("audit", config_file.get("audit", args.audit)),
+            ("async engine", bool(args.async_engine or config_file.get("async_engine"))),
+            ("plugins", ", ".join(config_file.get("plugins", args.plugin)) or "none"),
+        ])
+        phase("assembling crawler configuration", enabled=effects)
 
     profile = config_file.get("profile", args.profile)
     defaults = profile_defaults(profile)
@@ -172,12 +193,17 @@ def run_crawl(args) -> int:
 
     plugins = config_file.get("plugins", args.plugin)
     if args.async_engine or config_file.get("async_engine"):
+        event("async engine requested", "accent")
+        phase("spawning asynchronous workers", enabled=effects)
         crawler = AsyncHCrawler(config, plugins=plugins)
         result = asyncio.run(crawler.crawl_async())
     else:
+        event("sync engine selected", "accent")
+        phase("arming synchronous crawler", enabled=effects)
         crawler = HCrawler(config, plugins=plugins)
         result = crawler.crawl()
 
+    rule("mission report")
     if args.sentinel_summary:
         print_sentinel_summary(result)
     else:
@@ -185,10 +211,11 @@ def run_crawl(args) -> int:
 
     if args.write_baseline:
         write_baseline(result, Path(args.write_baseline))
-        print(f"Saved baseline: {args.write_baseline}")
+        event(f"saved baseline: {args.write_baseline}", "info")
 
     if args.compare_baseline:
         baseline_diff = compare_baseline(result, Path(args.compare_baseline))
+        rule("baseline diff")
         print(json.dumps(baseline_diff, indent=2, ensure_ascii=False))
 
     output = args.output or config_file.get("output")
@@ -201,7 +228,7 @@ def run_crawl(args) -> int:
             max_errors=args.max_errors_policy,
         )
         if not ok:
-            print("Policy failed:")
+            event("policy failed", "error")
             for message in messages:
                 print(f"- {message}")
             if output:
@@ -210,12 +237,14 @@ def run_crawl(args) -> int:
 
     if output:
         export_result(result, Path(output), output_format)
-        print(f"Saved output: {output}")
+        event(f"saved output: {output}", "info")
 
     return 0
 
 
 def run_diff(args) -> int:
+    print_banner(effects=True, command="diff")
+    rule("report diff")
     result = compare_reports(Path(args.old_report), Path(args.new_report))
     text = json.dumps(result, indent=2, ensure_ascii=False)
     if args.output:
@@ -232,6 +261,8 @@ def run_demo(args) -> int:
 
 
 def run_doctor_cmd() -> int:
+    print_banner(effects=True, command="doctor")
+    rule("environment diagnostics")
     ok, checks = run_doctor()
     for check in checks:
         print(check)
@@ -251,6 +282,7 @@ def main(argv: list[str] | None = None) -> int:
         return run_demo(args)
     if args.command == "doctor":
         return run_doctor_cmd()
+
 
     parser.print_help()
     return 1
